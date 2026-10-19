@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Geo-History Finder</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 0 20px; }
+        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; }
+        .btn-gps { background: #28a745; }
+        .section { margin-bottom: 25px; background: #f8f9fa; padding: 15px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <h1>🗺️ Geo-History Finder</h1>
+    <p>Found historical events and interesting places near you.</p>
+
+    <!-- Ubication options -->
+    <div class="section">
+        <h3>1. Select your Location</h3>
+        
+        <!-- Option A: GPS -->
+        <button class="btn btn-gps" onclick="obtenerUbicacionGPS()">📍 Use my Current Location (GPS)</button>
+        <span id="gps-status"></span>
+
+        <hr style="margin: 15px 0;">
+
+        <!-- Option B: Written Address -->
+        <label for="address">Or enter an address/city:</label><br>
+        <input type="text" id="address" placeholder="E.g., Eiffel Tower, Paris" style="width: 70%; padding: 8px;">
+    </div>
+
+    <!-- Radius Selection -->
+    <div class="section">
+        <h3>2. Search Radius</h3>
+        <label for="radius">Circular Distance (km):</label>
+        <input type="number" id="radius" value="5" min="0.1" max="50" step="0.5" style="padding: 8px;">
+    </div>
+
+    <button class="btn" style="width: 100%; padding: 12px; font-size: 16px;" onclick="buscarEventos()">🔍 Buscar Historias Cercanas</button>
+
+    <h2 style="margin-top: 30px;">Results</h2>
+    <div id="results"></div>
+
+    <script>
+        let userLat = null;
+        let userLon = null;
+
+        // Function to obtain GPS location from the browser
+        function obtenerUbicacionGPS() {
+            const status = document.getElementById('gps-status');
+            if (!navigator.geolocation) {
+                status.innerText = " This browser does not support GPS location.";
+                return;
+            }
+
+            status.innerText = " Obtaining GPS signal...";
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLat = position.coords.latitude;
+                    userLon = position.coords.longitude;
+                    status.innerText = ` ✅ Location detected (${userLat.toFixed(4)}, ${userLon.toFixed(4)})`;
+                    document.getElementById('address').value = ""; // Clear text field
+                },
+                (error) => {
+                    status.innerText = " ❌ Error obtaining GPS: " + error.message;
+                }
+            );
+        }
+
+        async function buscarEventos() {
+            const address = document.getElementById('address').value.trim();
+            const radius = document.getElementById('radius').value;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = "Loading historical events...";
+
+            const payload = {
+                radius_km: parseFloat(radius)
+            };
+
+            // If there is an address written, it is sent; otherwise, the GPS coordinates are sent
+            if (address !== "") {
+                payload.address = address;
+            } else if (userLat !== null && userLon !== null) {
+                payload.latitude = userLat;
+                payload.longitude = userLon;
+            } else {
+                alert("Please obtain your GPS location or enter an address.");
+                resultsDiv.innerHTML = "";
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    resultsDiv.innerHTML = `<p style="color:red">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                if (data.results.length === 0) {
+                    resultsDiv.innerHTML = "<p>No historical events found within this radius.</p>";
+                    return;
+                }
+
+                let html = `<p><b>Search Location:</b> Lat ${data.search_location.lat}, Lon ${data.search_location.lon}</p>`;
+                data.results.forEach(item => {
+                    html += `
+                        <div class="card">
+                            <h4>${item.title}</h4>
+                            <p><b>Distance:</b> ${item.distance_km} km from you</p>
+                            <a href="${item.url}" target="_blank">Read on Wikipedia ↗</a>
+                        </div>
+                    `;
+                });
+                resultsDiv.innerHTML = html;
+
+            } catch (err) {
+                resultsDiv.innerHTML = "<p style='color:red'>Error in the connection with the server.</p>";
+            }
+        }
+    </script>
+</body>
+</html>
