@@ -14,7 +14,7 @@ DB_NAME = os.getenv("DB_NAME")
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-def get_engine(DATABASE_URL):
+def get_engine():
     """
     Crea el motor de conexión. 
     Por defecto usa SQLite local, pero basta con cambiar la URL a 'postgresql://...' para usar PostgreSQL.

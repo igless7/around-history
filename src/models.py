@@ -1,4 +1,5 @@
-from sqlalchemy import DeclarativeBase, mapped_column, Mapped, func, DateTime
+from sqlalchemy import func, DateTime
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from datetime import datetime
 from typing import Optional
 
